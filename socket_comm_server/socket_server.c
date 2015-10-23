@@ -51,13 +51,6 @@ teSocketStatus SocketServerInit(int iPort, char *psNetAddress)
 
     memset(&sSocketServer, 0, sizeof(sSocketServer));
     signal(SIGPIPE, SIG_IGN);//ingnore signal interference
-
-    if(-1 == (sSocketServer.iSocketFd = socket(AF_INET, SOCK_STREAM, 0)))
-    {
-        ERR_vPrintf(T_TRUE, "socket create error %s\n", strerror(errno));
-        return E_SOCK_ERROR_CREATESOCK;
-    }
-
     
 	struct sockaddr_in server_addr;  
 	server_addr.sin_family = AF_INET;  
@@ -70,6 +63,12 @@ teSocketStatus SocketServerInit(int iPort, char *psNetAddress)
         server_addr.sin_addr.s_addr = htonl(INADDR_ANY);        /*receive any address*/
     }
 	server_addr.sin_port = htons(iPort);
+
+    if(-1 == (sSocketServer.iSocketFd = socket(AF_INET, SOCK_STREAM, 0)))
+    {
+        ERR_vPrintf(T_TRUE, "socket create error %s\n", strerror(errno));
+        return E_SOCK_ERROR_CREATESOCK;
+    }
 
     int on = 1;  /*SO_REUSEADDR port can used twice by program */
     if((setsockopt(sSocketServer.iSocketFd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))<0) 
@@ -103,7 +102,8 @@ teSocketStatus SocketServerInit(int iPort, char *psNetAddress)
 teSocketStatus SocketServerFinished()
 {
     BLUE_vPrintf(DBG_SOCK, "Waiting SocketServerFinished...\n");
-
+    close(sSocketServer.iSocketFd);
+    
     pthread_kill(sSocketServer.pthSocketServer, THREAD_SIGNAL);
     void *psThread_Result;
     if(0 != pthread_join(sSocketServer.pthSocketServer, &psThread_Result))
@@ -158,6 +158,7 @@ static void *SocketServerHandleThread(void *arg)
             {
                 if(FD_ISSET(sSocketServer.iSocketFd, &fdSelect))//accept event
                 {
+                    DBG_vPrintf(DBG_SOCK, "sSocketServer.iSocketFd Changed\n");
                     if(sSocketServer.u8NumConnClient >= SOCKET_LISTEN_NUM)
                     {
                         ERR_vPrintf(T_TRUE, "The Number of client is 10, do not allowed connect\n");
@@ -177,14 +178,14 @@ static void *SocketServerHandleThread(void *arg)
                             }
                             else
                             {
-                                WHITE_vPrintf(DBG_SOCK, "A client already connected, [%d]-[%d]\n", i, sSocketClient[i].iSocketFd);
+                                YELLOW_vPrintf(DBG_SOCK, "A client already connected, [%d]-[%d]\n", i, sSocketClient[i].iSocketFd);
                                 FD_SET(sSocketClient[i].iSocketFd, &fdAll); /*Add This Client Into Select FD*/
                                 if(sSocketClient[i].iSocketFd > iListenSock)
                                 {
                                     iListenSock = sSocketClient[i].iSocketFd;   /*Make Sure The Listen Fd is Biggest*/
                                 }
                                 sSocketServer.u8NumConnClient ++;
-                                break;/*case default*/
+                                break;
                             }
                                
                         }

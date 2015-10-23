@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include "socket_client.h"
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -47,11 +48,19 @@ int main (int argc, char *argv[])
 
     signal(SIGTERM, SignalHandler);
     signal(SIGINT,  SignalHandler);
-    
+
+    teSocketStatus eSocketStatus;
+    eSocketStatus = SocketClientInit(7788, "10.128.118.43");
+    if(E_SOCK_OK != eSocketStatus)
+    {
+        ERR_vPrintf(T_TRUE, "SocketClientInit Error %d\n", eSocketStatus);
+        return -1;
+    }
     while(1)
     {
         sleep(3);
     }
+    SocketClientFinished();
     return 0;
 }
 

@@ -54,6 +54,7 @@ int main (int argc, char *argv[])
     if(E_SOCK_OK != eSocketStatus)
     {
         ERR_vPrintf(T_TRUE, "SocketServerInit Error %d\n", eSocketStatus);
+        return -1;
     }
     while(1)
     {
