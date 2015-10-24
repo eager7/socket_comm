@@ -6,5 +6,5 @@ git init
 git add README.md
 git commit -m "first commit"
 git remote add origin https://github.com/eager7/socket_comm.git
-git push -u origin master
-
+git push -u origin epoll
+git config --global core.editor vim
