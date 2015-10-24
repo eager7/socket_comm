@@ -67,5 +67,7 @@ int main (int argc, char *argv[])
 static void SignalHandler()
 {
     PURPLE_vPrintf(DBG_MAIN, "Receive a Terminal signal, Exit This Program\n");
+    SocketServerFinished();
+    
     exit(0);
 }
