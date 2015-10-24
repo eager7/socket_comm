@@ -102,8 +102,8 @@ teSocketStatus SocketServerInit(int iPort, char *psNetAddress)
 teSocketStatus SocketServerFinished()
 {
     BLUE_vPrintf(DBG_SOCK, "Waiting SocketServerFinished...\n");
-    close(sSocketServer.iSocketFd);
     
+    sSocketServer.eState = E_THREAD_STOPPED;
     pthread_kill(sSocketServer.pthSocketServer, THREAD_SIGNAL);
     void *psThread_Result;
     if(0 != pthread_join(sSocketServer.pthSocketServer, &psThread_Result))
@@ -119,9 +119,17 @@ teSocketStatus SocketServerFinished()
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
+static void ThreadSignalHandler(int sig)
+{
+    BLUE_vPrintf(DBG_SOCK, "ThreadSignalHandler Used To Interrupt System Call\n");
+}
+
 static void *SocketServerHandleThread(void *arg)
 {
     BLUE_vPrintf(DBG_SOCK, "SocketServerHandleThread\n");
+    sSocketServer.eState = E_THREAD_RUNNING;
+    signal(THREAD_SIGNAL, ThreadSignalHandler);
+    
     int i = 0;
     tsSocketClient sSocketClient[SOCKET_LISTEN_NUM];
     memset(&sSocketClient, 0, sizeof(sSocketClient));
@@ -135,7 +143,7 @@ static void *SocketServerHandleThread(void *arg)
     FD_SET(sSocketServer.iSocketFd, &fdAll);    /*Add our sock into FD*/
 
     int iListenSock = sSocketServer.iSocketFd;
-    while(1)
+    while(sSocketServer.eState)
     {
         fdSelect = fdAll;                       /*Copy Fd, because this Fd will be zero after*/
         DBG_vPrintf(DBG_SOCK, "Waiting for Fd Changed\n");
@@ -224,9 +232,10 @@ static void *SocketServerHandleThread(void *arg)
             }
             break;
         }
-        
         sleep(0);
     }
+    
+    close(sSocketServer.iSocketFd);
     DBG_vPrintf(DBG_SOCK, "Exit SocketServerHandleThread\n");
     pthread_exit("Get Killed Signal");
 }

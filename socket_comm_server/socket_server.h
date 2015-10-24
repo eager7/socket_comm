@@ -58,11 +58,21 @@ typedef enum
     E_SELECT_ERROR = -1,
 }teSelectResult;
 
+typedef volatile enum
+{
+    E_THREAD_STOPPED,   /**< Thread stopped */
+    E_THREAD_RUNNING,   /**< Thread running */
+    E_THREAD_STOPPING,  /**< Thread signaled to stop */
+} teState;               /**< Enumerated type of thread states */
+
 typedef struct _tSocketServer
 {
     int iSocketFd;
+
+    teState eState;
     pthread_t pthSocketServer;
     pthread_mutex_t mutex;
+    
     uint8 u8NumConnClient;
     char *psNetAddress;
 }tsSocketServer;
