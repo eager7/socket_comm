@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
     signal(SIGINT,  SignalHandler);
 
     teSocketStatus eSocketStatus;
-    eSocketStatus = SocketClientInit(7788, "10.128.118.43");
+    eSocketStatus = SocketClientInit(7788, "127.0.0.1");
     if(E_SOCK_OK != eSocketStatus)
     {
         ERR_vPrintf(T_TRUE, "SocketClientInit Error %d\n", eSocketStatus);
@@ -58,6 +58,7 @@ int main (int argc, char *argv[])
     }
     while(1)
     {
+		SocketSendMessage("Test Message\n", sizeof("Test Message\n"));
         sleep(3);
     }
     SocketClientFinished();

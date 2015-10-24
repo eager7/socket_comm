@@ -85,6 +85,7 @@ typedef struct _tsSocketClient
 /****************************************************************************/
 teSocketStatus SocketClientInit(int iPort, char *psNetAddress);
 teSocketStatus SocketClientFinished();
+teSocketStatus SocketSendMessage(char *psMessage, int iMsgLength);
 
 
 #if defined __cplusplus

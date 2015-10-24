@@ -35,7 +35,7 @@ extern "C"{
 /****************************************************************************/
 #define SOCKET_LISTEN_NUM 10
 #define THREAD_SIGNAL SIGUSR1
-
+#define EPOLL_EVENT_NUM 10
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -53,9 +53,9 @@ typedef enum
 
 typedef enum
 {
-    E_SELECT_OK = 1,
-    E_SELECT_TIMEOUT = 0,
-    E_SELECT_ERROR = -1,
+    E_EPOLL_OK = 1,
+    E_EPOLL_TIMEOUT = 0,
+    E_EPOLL_ERROR = -1,
 }teSelectResult;
 
 typedef volatile enum

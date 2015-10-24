@@ -59,6 +59,7 @@ teSocketStatus SocketClientInit(int iPort, char *psNetAddress)
 
     signal(SIGPIPE, SIG_IGN);//ingnore signal interference
     memset(&sSocketClient, 0, sizeof(sSocketClient));
+	sSocketClient.iSocketFd = -1;
     
     sSocketClient.addr_client.sin_family = AF_INET;
     if(NULL == psNetAddress)
@@ -95,6 +96,22 @@ teSocketStatus SocketClientFinished()
     }
 
     BLUE_vPrintf(DBG_SOCK, " SocketServerFinished %s\n", (char*)psThread_Result);
+    return E_SOCK_OK;
+}
+
+teSocketStatus SocketSendMessage(char *psMessage, int iMsgLength)
+{
+    DBG_vPrintf(DBG_SOCK, "SocketSendMessage\n");
+	if(T_TRUE != sSocketClient.bIsConnected)
+	{
+        ERR_vPrintf(T_TRUE,"Socket Not Ready\n");  		
+		return E_SELECT_ERROR;
+	}
+	if(-1 == send(sSocketClient.iSocketFd, psMessage, iMsgLength, 0))
+	{
+        ERR_vPrintf(T_TRUE,"socket send failed, %s\n", strerror(errno));  
+		return E_SELECT_ERROR;		
+	}
     return E_SOCK_OK;
 }
 
@@ -170,6 +187,7 @@ RECONNECT:
                     {
                         ERR_vPrintf(T_TRUE,"This Socket Is Disconnected, Will Retry Connect With Server\n"); 
                         close(sSocketClient.iSocketFd);
+						sSocketClient.iSocketFd = -1;
                         sleep(2);
                         goto RECONNECT;
                     }
