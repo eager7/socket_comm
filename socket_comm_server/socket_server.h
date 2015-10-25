@@ -50,6 +50,7 @@ typedef enum
     E_SOCK_ERROR_LISTEN, 
     E_SOCK_ERROR_PTHREAD_CREATE, 
     E_SOCK_ERROR_JOIN, 
+    E_SOCK_ERROR_FORMAT, 
 }teSocketStatus;
 
 typedef enum
@@ -58,6 +59,13 @@ typedef enum
     E_EPOLL_TIMEOUT = 0,
     E_EPOLL_ERROR = -1,
 }teSelectResult;
+
+typedef enum
+{
+    E_HANDLE_OK,
+    E_HANDLE_ERROR,
+   
+}teSocketHandle;
 
 typedef volatile enum
 {

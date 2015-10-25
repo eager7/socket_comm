@@ -23,7 +23,7 @@ SOURCE_DIR := .
 CFLAGS += -I./
 CFLAGS += -O2 -g -Wno-unused-but-set-variable -Wall
 PROJ_DFLAGS := -D_REENTRANT
-PROJ_LIB := -lpthread
+PROJ_LIB := -lpthread -ljson-c
 
 SOURCE := $(wildcard $(SOURCE_DIR)/*.c)
 OBJECTS := $(patsubst %.c,%.o,$(SOURCE))

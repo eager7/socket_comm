@@ -43,12 +43,15 @@ typedef enum
 {
     E_SOCK_OK = 0,
     E_SOCK_ERROR,
+    E_SOCK_ERROR_MALLOC,
     E_SOCK_ERROR_CREATESOCK,
     E_SOCK_ERROR_SETSOCK,
     E_SOCK_ERROR_CONNECT,
     E_SOCK_ERROR_LISTEN, 
     E_SOCK_ERROR_PTHREAD_CREATE, 
     E_SOCK_ERROR_JOIN, 
+    E_SOCK_ERROR_SEND, 
+    E_SOCK_ERROR_NULL, 
 }teSocketStatus;
 
 typedef enum
@@ -57,6 +60,13 @@ typedef enum
     E_SELECT_TIMEOUT = 0,
     E_SELECT_ERROR = -1,
 }teSelectResult;
+
+typedef enum
+{
+    E_HANDLE_OK,
+    E_HANDLE_ERROR,
+   
+}teSocketHandle;
 
 typedef struct _tsSocketClient
 {
@@ -85,7 +95,7 @@ typedef struct _tsSocketClient
 /****************************************************************************/
 teSocketStatus SocketClientInit(int iPort, char *psNetAddress);
 teSocketStatus SocketClientFinished();
-teSocketStatus SocketSendMessage(char *psMessage, int iMsgLength);
+teSocketStatus SocketSendMessage(teSocketHandle eSocketHandle, char *psMessage, int iSequenceNo);
 
 
 #if defined __cplusplus

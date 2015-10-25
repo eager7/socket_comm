@@ -30,6 +30,8 @@
 #include <sys/epoll.h> 
 #include <stdlib.h>
 
+#include <json/json.h>
+
 #include "socket_server.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -39,6 +41,8 @@
 /***        Local Function Prototypes                                     ***/
 /****************************************************************************/
 static void *SocketServerHandleThread(void *arg);
+static teSocketStatus SocketServerHandleRecvMessage(int iSocketFd, char *psRecvMessage);
+
 /****************************************************************************/
 /***        Local Variables                                               ***/
 /****************************************************************************/
@@ -118,6 +122,44 @@ teSocketStatus SocketServerFinished()
 
     return E_SOCK_OK;
 }
+
+teSocketStatus SocketServerSendMessage(teSocketHandle eSocketHandle, int iSocketFd, char *psMessage, int iSequenceNo)
+{
+    BLUE_vPrintf(DBG_SOCK, "SocketServerSendMessage %s\n", psMessage);
+
+    json_object *psJsonMessage = json_object_new_object();
+    if(NULL == psJsonMessage)
+    {
+        ERR_vPrintf(T_TRUE, "json_object_objece_new error\n");
+        return E_SOCK_ERROR;
+    }
+    json_object_object_add(psJsonMessage, "status", json_object_new_int(eSocketHandle));
+    json_object_object_add(psJsonMessage, "sequence", json_object_new_int(iSequenceNo));
+    json_object_object_add(psJsonMessage, "description", json_object_new_string(psMessage));
+
+    if(-1 == send(iSocketFd, json_object_get_string(psJsonMessage), strlen(json_object_get_string(psJsonMessage)), 0))
+    {
+        ERR_vPrintf(T_TRUE,"send failed, %s\n", strerror(errno));  
+        return E_SOCK_ERROR;
+    }
+    json_object_put(psJsonMessage);
+
+    return E_SOCK_OK;
+}
+
+teSocketStatus SocketServerSendJsonMessage(int iSocketFd, json_object *psJsonMessage)
+{
+    BLUE_vPrintf(DBG_SOCK, "SocketServerSendJsonMessage %s\n", json_object_get_string(psJsonMessage));
+    
+    if(-1 == send(iSocketFd, json_object_get_string(psJsonMessage),strlen(json_object_get_string(psJsonMessage)),0))
+    {
+        ERR_vPrintf(T_TRUE,"send failed, %s\n", strerror(errno));  
+        return E_SOCK_ERROR;
+    }
+
+    return E_SOCK_OK;
+}
+
 /****************************************************************************/
 /***        Local    Functions                                            ***/
 /****************************************************************************/
@@ -256,6 +298,7 @@ static void *SocketServerHandleThread(void *arg)
                                 else    /*recv event*/
                                 {
                                     YELLOW_vPrintf(DBG_SOCK, "Recv Data is [%d]--- %s\n", psSocketClientTemp1->iSocketFd, psSocketClientTemp1->csClientData);
+                                    SocketServerHandleRecvMessage(psSocketClientTemp1->iSocketFd, psSocketClientTemp1->csClientData);
                                 }
                                 break;
                             }
@@ -281,5 +324,42 @@ done:
     
     DBG_vPrintf(DBG_SOCK, "Exit SocketServerHandleThread\n");
     pthread_exit("Get Killed Signal");
+}
+
+static teSocketStatus SocketServerHandleRecvMessage(int iSocketFd, char *psRecvMessage)
+{
+    DBG_vPrintf(DBG_SOCK, "SocketServerHandleRecvMessage\n");
+
+    json_object *psJsonRecvMessage = json_tokener_parse(psRecvMessage);
+    if(NULL == psJsonRecvMessage)
+    {
+        ERR_vPrintf(T_TRUE, "json_tokener_parse error, message is not a json object\n");
+        return E_SOCK_ERROR_FORMAT;
+    }
+    json_object *psJsonTemp = NULL;
+    if(NULL != (psJsonTemp = json_object_object_get(psJsonRecvMessage, "status")))
+    {
+        int iStatus = json_object_get_int(psJsonTemp);
+        if(!iStatus)
+        {
+            if(NULL != (psJsonTemp = json_object_object_get(psJsonRecvMessage, "sequence")))
+            {
+                int iSequenceNo = json_object_get_int(psJsonTemp);
+                if(NULL != (psJsonTemp = json_object_object_get(psJsonRecvMessage, "description")))
+                {
+                    //TODO:
+                    SocketServerSendMessage(E_HANDLE_OK, iSocketFd, "Recv Successfully", iSequenceNo);
+                    
+                }
+            }
+        }
+        else
+        {
+            ERR_vPrintf(T_TRUE, "Message Return An Error\n");
+        }
+    }
+    json_object_put(psJsonRecvMessage);
+    
+    return E_SOCK_OK;
 }
 

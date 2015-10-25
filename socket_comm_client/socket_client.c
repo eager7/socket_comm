@@ -27,6 +27,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <json/json.h>
 
 #include "socket_client.h"
 /****************************************************************************/
@@ -99,19 +100,32 @@ teSocketStatus SocketClientFinished()
     return E_SOCK_OK;
 }
 
-teSocketStatus SocketSendMessage(char *psMessage, int iMsgLength)
+teSocketStatus SocketSendMessage(teSocketHandle eSocketHandle, char *psMessage, int iSequenceNo)
 {
     DBG_vPrintf(DBG_SOCK, "SocketSendMessage\n");
 	if(T_TRUE != sSocketClient.bIsConnected)
 	{
         ERR_vPrintf(T_TRUE,"Socket Not Ready\n");  		
-		return E_SELECT_ERROR;
+		return E_SOCK_ERROR_NULL;
 	}
-	if(-1 == send(sSocketClient.iSocketFd, psMessage, iMsgLength, 0))
+
+    json_object *psJsonMessage = json_object_new_object();
+    if(NULL == psJsonMessage)
+    {
+        ERR_vPrintf(T_TRUE,"json_object_new_object error\n");  		
+        return E_SOCK_ERROR_MALLOC;
+    }
+    json_object_object_add(psJsonMessage, "status", json_object_new_int(eSocketHandle));
+    json_object_object_add(psJsonMessage, "sequence", json_object_new_int(iSequenceNo));
+    json_object_object_add(psJsonMessage, "description", json_object_new_string(psMessage));
+    
+	if(-1 == send(sSocketClient.iSocketFd, json_object_get_string(psJsonMessage), strlen(json_object_get_string(psJsonMessage)), 0))
 	{
         ERR_vPrintf(T_TRUE,"socket send failed, %s\n", strerror(errno));  
-		return E_SELECT_ERROR;		
+		return E_SOCK_ERROR_SEND;		
 	}
+    json_object_put(psJsonMessage);
+    
     return E_SOCK_OK;
 }
 

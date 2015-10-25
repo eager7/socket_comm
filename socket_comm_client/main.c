@@ -58,7 +58,9 @@ int main (int argc, char *argv[])
     }
     while(1)
     {
-		SocketSendMessage("Test Message\n", sizeof("Test Message\n"));
+        srand((unsigned)time(NULL));
+        int iSequenceNo = rand();
+		SocketSendMessage(E_HANDLE_OK, "Test Message", iSequenceNo);
         sleep(3);
     }
     SocketClientFinished();
