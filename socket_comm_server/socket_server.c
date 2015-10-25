@@ -84,7 +84,7 @@ teSocketStatus SocketServerInit(int iPort, char *psNetAddress)
         return E_SOCK_ERROR_BIND;
     }
 
-    if(-1 == listen(sSocketServer.iSocketFd, 1))
+    if(-1 == listen(sSocketServer.iSocketFd, SOCKET_LISTEN_NUM))
     {
         ERR_vPrintf(T_TRUE,"listen socket failed, %s\n", strerror(errno));  
         return E_SOCK_ERROR_LISTEN;
@@ -147,7 +147,7 @@ static void *SocketServerHandleThread(void *arg)
     }
     struct epoll_event EpollEvevt, EpollEventList[EPOLL_EVENT_NUM];
     EpollEvevt.data.fd = sSocketServer.iSocketFd;
-    EpollEvevt.events = EPOLLIN | EPOLLET;  /*read ,Ede-Triggered*/
+    EpollEvevt.events = EPOLLIN;  /*read*/
     if(-1 == epoll_ctl (iEpollFd, EPOLL_CTL_ADD, sSocketServer.iSocketFd, &EpollEvevt))
     {
         ERR_vPrintf(T_TRUE,"epoll_create failed, %s\n", strerror(errno));  
@@ -156,7 +156,7 @@ static void *SocketServerHandleThread(void *arg)
         
     while(sSocketServer.eState)
     {
-        DBG_vPrintf(DBG_SOCK, "Waiting for iEpollFd Changed\n");
+        DBG_vPrintf(DBG_SOCK, "\n++++++++++++++Waiting for iEpollFd Changed\n");
         int iEpollResult = epoll_wait(iEpollFd,EpollEventList,EPOLL_EVENT_NUM,-1);
 
         switch (iEpollResult)
@@ -172,16 +172,30 @@ static void *SocketServerHandleThread(void *arg)
             break;
             default:
             {
+                DBG_vPrintf(DBG_SOCK, "Epoll_wait Find %d Changed\n", iEpollResult);
+                int n = 0;
                 for(i = 0; i < iEpollResult; i++)
                 {
-                    if(EpollEventList[i].data.fd == sSocketServer.iSocketFd)    /*accept event*/
+                    if((EpollEventList[n].events & EPOLLERR) || (EpollEventList[n].events & EPOLLHUP))
                     {
-                        DBG_vPrintf(DBG_SOCK, "sSocketServer.iSocketFd Changed %d\n", iEpollResult);
+                        ERR_vPrintf(T_TRUE,"The Fd Occured an Error, %s\n", strerror(errno));  
+                        continue;
+                    }
+                    else if(EpollEventList[n].data.fd == sSocketServer.iSocketFd)    /*Server accept event*/
+                    {
+                        DBG_vPrintf(DBG_SOCK, "sSocketServer.iSocketFd Changed\n");
                         if(sSocketServer.u8NumConnClient >= (SOCKET_LISTEN_NUM - 1))
                         {
-                            ERR_vPrintf(T_TRUE, "The Number of client is 10, do not allowed connect\n");
+                            ERR_vPrintf(T_TRUE, "The Number of client is 10, do not allowed connect, will not wait server fd\n");
+                            EpollEvevt.data.fd = sSocketServer.iSocketFd;
+                            EpollEvevt.events = EPOLLIN;  /*read ,Ede-Triggered, close*/
+                            if(-1 == epoll_ctl (iEpollFd, EPOLL_CTL_DEL, sSocketServer.iSocketFd, &EpollEvevt))
+                            {
+                                ERR_vPrintf(T_TRUE,"epoll_ctl failed, %s\n", strerror(errno));                                         
+                                pthread_exit("epoll_ctl failed");
+                            }
+                            continue;
                             sleep(1);
-                            break;
                         }
                         
                         for(i = 0; i < SOCKET_LISTEN_NUM; i++)
@@ -206,21 +220,22 @@ static void *SocketServerHandleThread(void *arg)
                                         ERR_vPrintf(T_TRUE,"epoll_ctl failed, %s\n", strerror(errno));                                         
                                         pthread_exit("epoll_ctl failed");
                                     }
+                                    DBG_vPrintf(DBG_SOCK, "Client[%d] Already Add Epoll_wait Fd\n", i);
                                     break;  /*jump out for, otherwise will go accept again*/
                                 }
                         
                             }
                         }/*for*/
                     }
-                    else
+                    else/*Client recive event or disconnect event*/
                     {
-                        for(i = 0; i < SOCKET_LISTEN_NUM; i++)  /*recive event or disconnect event*/
+                        for(i = 0; i < SOCKET_LISTEN_NUM; i++)
                         {
                             if(-1 == sSocketClient[i].iSocketFd)
                             {
                                 continue;
                             }
-                            else if(EpollEventList[i].data.fd == sSocketClient[i].iSocketFd)
+                            else if(EpollEventList[n].data.fd == sSocketClient[i].iSocketFd)
                             {
                                 BLUE_vPrintf(DBG_SOCK, "Socket Client[%d] Begin Recv Data...\n", i);
                                 sSocketClient[i].iSocketLen = recv(sSocketClient[i].iSocketFd, 
@@ -244,6 +259,16 @@ static void *SocketServerHandleThread(void *arg)
                                     close(sSocketClient[i].iSocketFd);
                                     sSocketClient[i].iSocketFd = -1;
                                     sSocketServer.u8NumConnClient --;
+                                    if(sSocketServer.u8NumConnClient < SOCKET_LISTEN_NUM)
+                                    {
+                                        EpollEvevt.data.fd = sSocketServer.iSocketFd;
+                                        EpollEvevt.events = EPOLLIN;  /*read*/
+                                        if(-1 == epoll_ctl (iEpollFd, EPOLL_CTL_ADD, sSocketServer.iSocketFd, &EpollEvevt))
+                                        {
+                                            ERR_vPrintf(T_TRUE,"epoll_create failed, %s\n", strerror(errno));  
+                                            pthread_exit("epoll_create failed");
+                                        }
+                                    }
                                 }
                                 else    /*recv event*/
                                 {
