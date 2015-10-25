@@ -30,6 +30,7 @@ extern "C"{
 #include <pthread.h>
 #include "utils.h"
 #include <netinet/in.h>
+#include "list.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -83,6 +84,7 @@ typedef struct _tSocektClient
     struct sockaddr_in addrclient;
     int iSocketLen;
     char csClientData[MXBF];
+    struct dl_list list;
 }tsSocketClient;
 /****************************************************************************/
 /***        Local Function Prototypes                                     ***/
